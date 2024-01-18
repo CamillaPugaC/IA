@@ -1,0 +1,50 @@
+from tensorflow.keras import Sequential
+from tensorflow.keras.layers import Dense
+from sklearn.preprocessing import StandardScaler
+from tabulate import tabulate
+import numpy as np
+import pandas as pd
+
+iris = pd.read_csv("iris.data",
+                   sep=",", header=None,
+                   names=["LS", "AS", "LP", "AP", "Especie"])
+
+neuronas_ocultas = int(input("Capas ocultas: "))
+valores_neuronas = [
+    float(input(f"Neurona {i + 1}: "))
+    for i in range(neuronas_ocultas)
+]
+epocas = int(input("Número de épocas: "))
+print("\n\n")
+
+caracteristicas = iris.drop("Especie", axis=1)
+etiquetas = pd.get_dummies(iris["Especie"])
+
+escalador = StandardScaler()
+caracteristicas_escaladas = escalador.fit_transform(caracteristicas)
+
+np.random.seed(20)
+
+modelo = Sequential()
+modelo.add(Dense(neuronas_ocultas, activation='relu', input_shape=(caracteristicas.shape[1],)))
+
+for valor in valores_neuronas:
+    modelo.add(Dense(int(valor), activation='relu'))
+
+modelo.add(Dense(etiquetas.shape[1], activation='softmax'))
+modelo.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+modelo.fit(caracteristicas_escaladas, etiquetas, epochs=epocas)
+
+perdida, precision = modelo.evaluate(caracteristicas_escaladas, etiquetas, verbose=0)
+print(f"Pérdida: {perdida:.5f}, Precisión: {precision:.5f}")
+
+predicciones = modelo.predict(caracteristicas_escaladas)
+nombres_especies = ["Set", "Ver", "Vir"]
+
+columnas_prediccion = [f"{especie}-Pred" for especie in nombres_especies]
+tabla_resultados = pd.concat([caracteristicas, etiquetas, pd.DataFrame(predicciones, columns=columnas_prediccion)], axis=1)
+formatos = [".1f" if i < 8 else ".6f" for i in range(len(tabla_resultados.columns))]
+tabla_str = tabulate(tabla_resultados, headers='keys', tablefmt='fancy_grid', floatfmt=formatos)
+
+print("\n\n")
+print(tabla_str)
